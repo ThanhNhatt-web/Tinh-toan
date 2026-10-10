@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Đổi MiB ⇄ số N (file ghi 1 tới N)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #eef1f5;
+    --panel: #ffffff;
+    --ink: #14202b;
+    --muted: #5b6b7a;
+    --line: #d3dae2;
+    --accent: #1b5fb8;
+    --accent-ink: #ffffff;
+    --result: #f1f6fd;
+    --warn: #9a4b00;
+    --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151b; --panel: #172029; --ink: #e6ecf2; --muted: #93a3b3;
+      --line: #2b3946; --accent: #6aa6f2; --accent-ink: #0f151b;
+      --result: #1b2a3b; --warn: #f0b36b; --err: #ff8a80;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f151b; --panel: #172029; --ink: #e6ecf2; --muted: #93a3b3;
+    --line: #2b3946; --accent: #6aa6f2; --accent-ink: #0f151b;
+    --result: #1b2a3b; --warn: #f0b36b; --err: #ff8a80;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 6px; font-weight: 600; }
+  .lead { margin: 0 0 24px; color: var(--muted); max-width: 62ch; }
+  .formula {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: .85rem; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 6px; padding: 12px 14px; margin-bottom: 24px; overflow-x: auto; white-space: pre;
+  }
+  section.panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 20px; margin-bottom: 18px;
+  }
+  h2 { font-size: 1.05rem; margin: 0 0 14px; font-weight: 600; }
+  label { display: block; font-size: .9rem; color: var(--muted); margin-bottom: 6px; }
+  .row { display: flex; gap: 10px; }
+  input[type="text"] {
+    flex: 1; min-width: 0; font: 500 1.1rem "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 12px;
+  }
+  input[type="text"]:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .unit {
+    display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--line);
+    border-radius: 6px; color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  .out { margin-top: 16px; }
+  .msg { color: var(--muted); }
+  .msg.err { color: var(--err); }
+  .box { background: var(--result); border: 1px solid var(--line); border-radius: 6px; padding: 14px; margin-top: 10px; }
+  .box h3 { margin: 0 0 6px; font-size: .95rem; font-weight: 600; }
+  .big {
+    font: 500 1.25rem/1.4 "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere;
+  }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: .92rem; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .note { color: var(--warn); font-size: .92rem; margin: 8px 0 0; }
+  button.use {
+    font: inherit; font-size: .85rem; margin-top: 8px; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer;
+  }
+  button.use:hover { background: var(--accent); color: var(--accent-ink); }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .examples button {
+    font: .85rem "IBM Plex Mono", ui-monospace, monospace; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer;
+  }
+  .examples button:hover { border-color: var(--accent); }
+  footer { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+  @media (max-width: 480px) { .row { flex-direction: column; } .unit { padding: 8px 12px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Đổi MiB ⇄ số N</h1>
+  <p class="lead">File ghi các số từ 1 tới N, mỗi số một dòng, mã hóa ASCII/UTF-8, xuống dòng kiểu LF (Linux). Tính chính xác, không làm tròn.</p>
+
+<div class="formula">S(N) = (d + 1) × N + d − (10^d − 1) / 9      (byte, d = số chữ số của N)
+MiB  = S(N) / 1.048.576
+N    = (B − d + (10^d − 1) / 9) / (d + 1),   B = MiB × 1.048.576</div>
+
+  <section class="panel" aria-labelledby="h-n2m">
+    <h2 id="h-n2m">Từ số N sang MiB</h2>
+    <label for="inN">Ghi từ 1 tới N (nhập số nguyên dương)</label>
+    <div class="row">
+      <input id="inN" type="text" inputmode="numeric" autocomplete="off" placeholder="1000000" value="1000000">
+      <span class="unit">số</span>
+    </div>
+    <div class="examples" id="exN" aria-label="Ví dụ nhanh"></div>
+    <div class="out" id="outN" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-m2n">
+    <h2 id="h-m2n">Từ MiB sang số N</h2>
+    <label for="inM">Dung lượng file (nhập số, dùng dấu chấm hoặc phẩy cho phần thập phân)</label>
+    <div class="row">
+      <input id="inM" type="text" inputmode="decimal" autocomplete="off" placeholder="7.8" value="7.8">
+      <span class="unit">MiB</span>
+    </div>
+    <div class="examples" id="exM" aria-label="Ví dụ nhanh"></div>
+    <div class="out" id="outM" aria-live="polite"></div>
+  </section>
+
+  <footer>Mọi phép tính dùng số nguyên lớn (BigInt) và phân số, nên không có sai số dấu phẩy động.</footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var MIB = 1048576n;
+  var MAXD = 40; // N tối đa 40 chữ số
+
+  function $(id) { return document.getElementById(id); }
+  function pow10(k) { return 10n ** BigInt(k); }
+  function rep(d) { return (pow10(d) - 1n) / 9n; } // 11...1 (d chữ số 1)
+
+  function group(intStr) {
+    return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  // Phân số num/den -> chuỗi thập phân (tối đa maxDigits chữ số lẻ, kiểu VN: dấu phẩy)
+  function fmtFrac(num, den, maxDigits) {
+    var neg = num < 0n;
+    if (neg) num = -num;
+    var ip = num / den;
+    var rem = num % den;
+    var s = group(ip.toString());
+    if (rem === 0n) return (neg ? "-" : "") + s;
+    var digits = "";
+    var n = 0;
+    while (rem !== 0n && n < maxDigits) {
+      rem *= 10n;
+      digits += (rem / den).toString();
+      rem = rem % den;
+      n++;
+    }
+    return (neg ? "-" : "") + s + "," + digits + (rem !== 0n ? "…" : "");
+  }
+
+  function fmtInt(n) { return group(n.toString()); }
+
+  // S(N) theo công thức
+  function sizeBytes(N) {
+    var d = N.toString().length;
+    return BigInt(d + 1) * N + BigInt(d) - rep(d);
+  }
+
+  function parseInt10(s) {
+    s = s.replace(/[\s._,']/g, "");
+    if (!/^\d+$/.test(s)) return null;
+    return BigInt(s);
+  }
+
+  function parseDec(s) {
+    s = s.trim().replace(/\s/g, "").replace(",", ".");
+    var m = /^(\d+)(?:\.(\d+))?$/.exec(s);
+    if (!m) return null;
+    var frac = m[2] || "";
+    return { num: BigInt(m[1] + frac), den: pow10(frac.length) };
+  }
+
+  function el(html) { var d = document.createElement("div"); d.innerHTML = html; return d; }
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
+
+  /* ---------- N -> MiB ---------- */
+  function renderN() {
+    var out = $("outN");
+    var raw = $("inN").value;
+    if (raw.trim() === "") { out.innerHTML = '<p class="msg">Nhập N để xem dung lượng.</p>'; return; }
+    var N = parseInt10(raw);
+    if (N === null) { out.innerHTML = '<p class="msg err">Chỉ nhập chữ số 0–9 (có thể dùng dấu chấm ngăn cách hàng nghìn).</p>'; return; }
+    if (N < 1n) { out.innerHTML = '<p class="msg err">N phải từ 1 trở lên.</p>'; return; }
+    if (N.toString().length > MAXD) { out.innerHTML = '<p class="msg err">N tối đa ' + MAXD + ' chữ số.</p>'; return; }
+    var d = N.toString().length;
+    var S = sizeBytes(N);
+    out.innerHTML =
+      '<div class="box"><h3>Dung lượng</h3>' +
+      '<div class="big">' + esc(fmtFrac(S, MIB, 30)) + ' MiB</div></div>' +
+      '<div class="box"><dl class="kv">' +
+      '<dt>d (số chữ số)</dt><dd>' + d + '</dd>' +
+      '<dt>(10^d − 1) / 9</dt><dd>' + esc(fmtInt(rep(d))) + '</dd>' +
+      '<dt>S(N)</dt><dd>' + esc(fmtInt(S)) + ' byte</dd>' +
+      '</dl></div>';
+  }
+
+  /* ---------- MiB -> N ---------- */
+  function renderM() {
+    var out = $("outM");
+    var raw = $("inM").value;
+    if (raw.trim() === "") { out.innerHTML = '<p class="msg">Nhập số MiB để tìm N.</p>'; return; }
+    var m = parseDec(raw);
+    if (m === null) { out.innerHTML = '<p class="msg err">Nhập số không âm, ví dụ 7.8 hoặc 7,8.</p>'; return; }
+    if (m.den.toString().length > 60) { out.innerHTML = '<p class="msg err">Quá nhiều chữ số thập phân.</p>'; return; }
+
+    // B = MiB × 1.048.576 = bn / bd (byte)
+    var bn = m.num * MIB, bd = m.den;
+    if (bn === 0n) { out.innerHTML = '<p class="msg err">File 0 byte: không có N nào (file nhỏ nhất, N = 1, nặng 2 byte).</p>'; return; }
+
+    // Tìm d sao cho N_d = (B − d + rep(d)) / (d + 1) có đúng d chữ số
+    var found = null;
+    for (var d = 1; d <= MAXD; d++) {
+      var nn = bn + (rep(d) - BigInt(d)) * bd;
+      var nd = bd * BigInt(d + 1);
+      if (nn >= pow10(d - 1) * nd && nn < pow10(d) * nd) { found = { d: d, nn: nn, nd: nd }; break; }
+    }
+    if (!found) {
+      out.innerHTML = '<p class="msg err">Dung lượng này nhỏ hơn 2 byte (N = 1 đã nặng 2 byte) hoặc vượt quá giới hạn ' + MAXD + ' chữ số.</p>';
+      return;
+    }
+
+    var nn = found.nn, nd = found.nd, d = found.d;
+    var isInt = (nn % nd === 0n);
+    var fl = nn / nd;
+
+    var html = '<div class="box"><h3>N chính xác</h3>' +
+      '<div class="big">' + esc(fmtFrac(nn, nd, 30)) + '</div>' +
+      '<dl class="kv" style="margin-top:8px">' +
+      '<dt>d (số chữ số)</dt><dd>' + d + '</dd>' +
+      '<dt>B</dt><dd>' + esc(fmtFrac(bn, bd, 30)) + ' byte</dd>' +
+      '</dl></div>';
+
+    if (isInt) {
+      html += '<p class="note" style="color:var(--muted)">N là số nguyên: file ghi từ 1 tới ' + esc(fmtInt(fl)) + ' nặng đúng ' + esc(raw.trim()) + ' MiB.</p>';
+      html += '<button class="use" data-n="' + fl + '">Dùng N này ở ô bên trên</button>';
+    } else {
+      html += '<p class="note">N ra số thập phân nên không có N nguyên nào cho đúng ' + esc(raw.trim()) + ' MiB (dung lượng file luôn là số byte nguyên). Hai số nguyên gần nhất:</p>';
+      [fl, fl + 1n].forEach(function (N) {
+        var S = sizeBytes(N);
+        html += '<div class="box"><h3>N = ' + esc(fmtInt(N)) + '</h3><dl class="kv">' +
+          '<dt>Dung lượng</dt><dd>' + esc(fmtInt(S)) + ' byte</dd>' +
+          '<dt>MiB</dt><dd>' + esc(fmtFrac(S, MIB, 30)) + '</dd>' +
+          '</dl><button class="use" data-n="' + N + '">Dùng N này ở ô bên trên</button></div>';
+      });
+    }
+    out.innerHTML = html;
+  }
+
+  // Ví dụ nhanh
+  function addExamples(id, items, target, handler) {
+    var box = $(id);
+    items.forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = v;
+      b.addEventListener("click", function () { $(target).value = v; handler(); });
+      box.appendChild(b);
+    });
+  }
+  addExamples("exN", ["1000", "1000000", "1161249", "1161250"], "inN", renderN);
+  addExamples("exM", ["1", "6.57", "7.8", "100"], "inM", renderM);
+
+  $("inN").addEventListener("input", renderN);
+  $("inM").addEventListener("input", renderM);
+
+  // Nút "Dùng N này": đưa N sang ô trên
+  $("outM").addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains("use")) {
+      $("inN").value = t.getAttribute("data-n");
+      renderN();
+      $("inN").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+
+  renderN();
+  renderM();
+})();
+</script>
+</body>
+</html>
